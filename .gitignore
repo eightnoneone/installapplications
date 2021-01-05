@@ -1,3 +1,7 @@
+# our build directory
+build/
+# Python stuff
 *.pyc
 *.DS_Store
-payload/Library/installapplications/Python.framework
+*.framework
+*.zip

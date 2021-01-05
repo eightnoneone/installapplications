@@ -55,7 +55,7 @@ It is recommended that you run `2to3` against your scripts to make them python3 
 
 Then simply update the shebang on your python scripts to pin against the InstallApplications python framework.
 
-`#!/Library/installapplications/Python.framework/Versions/3.8/bin/python3`
+`#!/Library/installapplications/Python.framework/Versions/Current/bin/python3`
 
 You can find an example on how this was done by looking at InstallApplications' own `postinstall`
 
@@ -65,6 +65,7 @@ You can find an example on how this was done by looking at InstallApplications' 
 - MicroMDM
 - SimpleMDM
 - Mosyle
+- Jamf School
 
 ### A note about other MDMs
 While other MDMs could _technically_ install this tool, the mechanism greatly differs. Other MDMs currently use `InstallApplication` API to install their binary. From here, you could then install this tool.
@@ -120,12 +121,12 @@ Note that you cannot use a `Mac Developer:` signing identity as that is used for
 `An installer signing identity (not an application signing identity) is required for signing flat-style products.)`
 
 ### Downloading and running scripts
-InstallApplications can now handle downloading and running scripts. Please see below for how to specify the json structure.
+InstallApplications can handle downloading and running scripts. Please see below for how to specify the json structure.
 
 For user scripts, you **must** set the folder path to the `userscripts` sub folder. This is due to the folder having world-wide permissions, allowing the LaunchAgent/User to delete the scripts when finished.
 
 ```json
-"file": "/Library/Application Support/installapplications/userscripts/userland_exampleuserscript.py",
+"file": "/Library/installapplications/userscripts/userland_exampleuserscript.py",
 ```
 
 ## Installing InstallApplications to another folder.
@@ -133,7 +134,7 @@ If you need to install IAs to another folder, you can modify the munki-pkg `payl
 
 ```xml
 <string>--iapath</string>
-<string>/Library/Application Support/installapplications</string>
+<string>/Library/installapplications</string>
 ```
 
 ### Configuring LaunchAgent/LaunchDaemon for your json
@@ -191,64 +192,17 @@ In the LaunchDaemon add the following:
 <string>Basic dGVzdDp0ZXN0</string>
 ```
 
-### DEPNotify
-InstallApplications can work in conjunction with DEPNotify to automatically create and manipulate the progress bar.
-
-InstallApplications will do the following automatically:
- - Determine the progress bar based on the amount of packages in the json (excluding setupassistant)
-
-#### Notes about argument behavior
-If you would like to pass more options to DEPNotify, simply pass string arguments exactly as they would be passed to DEPNotify. The `--depnotify` option can be passed an *unlimited* amount of arguments.
-
-```
-installapplications.py --depnotify "Command: WindowTitle: InstallApplications is Awesome!" "Command: Quit: Thanks for using InstallApplications and DEPNotify!"
-```
-
-If you pass arguments for `Quit` or `Restart`, InstallApplications will ignore these commands until the end of the run.
-
-#### Opening DEPNotify with InstallApplications
-If you would like to open DEPNotify, simply pass the `DEPNotifyPath:` argument to the `--depnotify` option.
-
-```
-installapplications.py --depnotify "DEPNotifyPath: /path/to/DEPNotify.app"
-```
-
-If you need additional arguments to pass to DEPNotify, add `DEPNotifyArguments:` to the `--depnotify` option.
-
-```
-installapplications.py --depnotify "DEPNotifyPath: /path/to/DEPNotify.app" "DEPNotifyArguments: -munki"
-```
-
-InstallApplications will wait until `userland` to open DEPNotify as the `setupassistant` is used for SetupAssistant.
-
-You can also pass unlimited arguments to DEPNotify.
-
-```
-installapplications.py --depnotify "DEPNotifyPath: /path/to/DEPNotify.app" "DEPNotifyArguments: -munki -fullScreen"
-```
-
-**By default** InstallApplications will create a `determinate` and show a status for each item in your stages. If you would like to skip this behavior, pass `DEPNotifySkipStatus` to the `--depnotify` options
-```
-installapplications.py --depnotify "DEPNotifySkipStatus"`
-```
-
-#### DEPNotify LaunchDaemon
-You can pass unlimited options to DEPNotify that will allow you to set it's various options.
+#### Follow HTTP Redirects
+If your webserver needs to redirect InstallApplictions to fetch content from another URL, pass `--follow-redirects` in your LaunchDaemon. Useful for situations where content may be stored on a CDN or object storage.
 
 ```xml
-<string>--depnotify</string>
-<string>DEPNotifySkipStatus</string>
-<string>Command: WindowTitle: InstallApplications is Awesome!</string>
-<string>Command: NotificationOn:</string>
-<string>Command: Quit: Thanks for using InstallApplications and DEPNotify!</string>
-<string>Command: WindowStyle: ActivateOnStep</string>
-<string>DEPNotifyPath: /Applications/Utilities/DEPNotify.app</string>
-<string>DEPNotifyArguments: -munki</string>
+<string>--follow-redirects</string>
 ```
 
-For a list of all DEPNotify options, please go [here](https://gitlab.com/Mactroll/DEPNotify).
+### DEPNotify
+As of InstallApplications v2.0.2, the built in support for DEPNotify has been removed.
 
-Please note that `DEPNotifyPath` and `DEPNotifyArguments` are custom options for this tool only and are not available in DEPNotify.
+Big Sur makes this code less stable. If you would like an example on how to launch DEPNotify with a user script, please see [depnotify_user_launcher.py](https://github.com/erikng/installapplicationsdemo/blob/master/installapplications/scripts/user/depnotify_user_launcher.py) at the installapplications demo GitHub.
 
 ### Logging
 All root actions are logged at `/private/var/log/installapplications.log` as well as through NSLog. You can open up Console.app and search for `InstallApplications` to bring up all of the events.
@@ -269,7 +223,7 @@ This guarantees that the package you place on the web for download is the packag
 
 ### JSON Structure
 The JSON structure is quite simple. You supply the following:
-- filepath (currently hardcoded to `/Library/Application Support/installapplications`)
+- filepath (currently hardcoded to `/Library/installapplications`)
 - url (any domain, but it should ideally be https://)
 - hash (SHA256)
 - name (define a name for the package, for debug logging and DEPNotify)
@@ -283,7 +237,7 @@ The following is an example JSON:
   "preflight": [
     {
       "donotwait": false,
-      "file": "/Library/Application Support/installapplications/preflight_script.py",
+      "file": "/Library/installapplications/preflight_script.py",
       "hash": "sha256 hash",
       "name": "Example Preflight Script",
       "type": "rootscript",
@@ -292,7 +246,7 @@ The following is an example JSON:
   ],
   "setupassistant": [
     {
-      "file": "/Library/Application Support/installapplications/setupassistant.pkg",
+      "file": "/Library/installapplications/setupassistant.pkg",
       "url": "https://domain.tld/setupassistant.pkg",
       "packageid": "com.package.setupassistant",
       "version": "1.0",
@@ -303,7 +257,7 @@ The following is an example JSON:
   ],
   "userland": [
     {
-      "file": "/Library/Application Support/installapplications/userland.pkg",
+      "file": "/Library/installapplications/userland.pkg",
       "url": "https://domain.tld/userland.pkg",
       "packageid": "com.package.userland",
       "version": "1.0",
@@ -312,14 +266,14 @@ The following is an example JSON:
       "type": "package"
     },
     {
-      "file": "/Library/Application Support/installapplications/userland_examplerootscript.py",
+      "file": "/Library/installapplications/userland_examplerootscript.py",
       "hash": "sha256 hash",
       "name": "Example Script",
       "type": "rootscript",
       "url": "https://domain.tld/userland_examplerootscript.py"
     },
     {
-      "file": "/Library/Application Support/installapplications/userscripts/userland_exampleuserscript.py",
+      "file": "/Library/installapplications/userscripts/userland_exampleuserscript.py",
       "hash": "sha256 hash",
       "name": "Example Script",
       "type": "userscript",
